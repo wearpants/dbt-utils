@@ -60,8 +60,9 @@
 
     )
 
-    -- TODO : get_columns_in_table to exclude junk!
-    select *
+    select
+        {{ star(from=table_relation | replace('"', ''), except=['__dbt_source', '__dbt_pk', '__dbt_updated_at']) }}
+
     from ranked
     where row_number = 1
 
@@ -83,10 +84,14 @@
     {% set table_create_sql = get_table_sql(sql, unique_key, updated_at) %}
     {% set view_create_sql = get_view_sql(table_relation, sql, unique_key, updated_at) %}
 
-    {% call statement('main') %}
+    {% call statement() %}
 
         {{ create_table_as(False, table_identifier, table_create_sql) }}
         {{ create_view_as(view_identifier, view_create_sql) }}
+
+    {% endcall %}
+
+    {% call statement('main') %}
 
         {% set union_sql = get_union_sql(table_relation, view_relation) %}
         {{ create_view_as(identifier, union_sql) }}
