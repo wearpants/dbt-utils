@@ -9,11 +9,12 @@ testing is required to validate that it will work on other dateparts.
 
 
 {%- macro default_last_day(date, datepart) -%}
-    cast(
-        {{dbt_utils.dateadd('day', '-1',
-        dbt_utils.dateadd(datepart, '1', dbt_utils.date_trunc(datepart, date))
-        )}}
-        as date)
+    {{dbt_utils.cast(
+        dbt_utils.dateadd('day', '-1',
+            dbt_utils.dateadd(datepart, '1', 
+                dbt_utils.date_trunc(datepart, date)
+            )
+        ), 'date')}}
 {%- endmacro -%}
 
 
