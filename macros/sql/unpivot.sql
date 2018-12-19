@@ -11,25 +11,19 @@ Arguments:
 
 {% macro unpivot(table, cast_to='varchar', exclude=none) -%}
 
-  {%- set exclude = exclude if exclude is not none else [] %}
+  {%- set exclude = (exclude | map('upper')) if exclude is not none else [] %}
 
   {%- set include_cols = [] %}
 
   {%- set table_columns = {} %}
 
-  {%- set _ = table_columns.update({table: []}) %}
+  {%- do table_columns.update({table: []}) -%}
 
-  {%- if table.name -%}
-    {%- set schema, table_name = table.schema, table.name -%}
-  {%- else -%}
-    {%- set schema, table_name = (table | string).split(".") -%}
-  {%- endif -%}
-
-  {%- set cols = adapter.get_columns_in_table(schema, table_name) %}
+  {%- set cols = adapter.get_columns_in_relation(table) %}
 
   {%- for col in cols -%}
-    {%- if col.column not in exclude -%}
-      {% set _ = include_cols.append(col) %}
+    {%- if (col.column | upper) not in exclude -%}
+      {% do include_cols.append(col) %}
     {%- endif %}
   {%- endfor %}
 

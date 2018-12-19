@@ -13,34 +13,28 @@
 
     {%- for table in tables -%}
 
-        {%- set _ = table_columns.update({table: []}) %}
+        {%- do table_columns.update({table: []}) %}
 
-        {%- if table.name -%}
-            {%- set schema, table_name = table.schema, table.name -%}
-        {%- else -%}
-            {%- set schema, table_name = (table | string).split(".") -%}
-        {%- endif -%}
-
-        {%- set cols = adapter.get_columns_in_table(schema, table_name) %}
+        {%- set cols = adapter.get_columns_in_relation(table) %}
         {%- for col in cols -%}
 
         {%- if col.column not in exclude %}
 
             {# update the list of columns in this table #}
-            {%- set _ = table_columns[table].append(col.column) %}
+            {%- do table_columns[table].append(col.column) %}
 
             {%- if col.column in column_superset -%}
 
                 {%- set stored = column_superset[col.column] %}
                 {%- if col.is_string() and stored.is_string() and col.string_size() > stored.string_size() -%}
 
-                    {%- set _ = column_superset.update({col.column: col}) %}
+                    {%- do column_superset.update({col.column: col}) %}
 
                 {%- endif %}
 
             {%- else -%}
 
-                {%- set _ =  column_superset.update({col.column: col}) %}
+                {%- do column_superset.update({col.column: col}) %}
 
             {%- endif -%}
 

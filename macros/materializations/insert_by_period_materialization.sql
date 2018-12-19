@@ -1,4 +1,4 @@
-{% macro get_period_boundaries(target_schema, target_table, timestamp_field, start_date, stop_date, period) -%}
+{% macro get_period_boundaries(target, timestamp_field, start_date, stop_date, period) -%}
 
   {% call statement('period_boundaries', fetch_result=True) -%}
     with data as (
@@ -10,7 +10,7 @@
                                 "nullif('" ~ stop_date ~ "','')::timestamp")}},
             {{dbt_utils.current_timestamp()}}
           ) as stop_timestamp
-      from "{{target_schema}}"."{{target_table}}"
+      from {{target}}
     )
 
     select
@@ -57,8 +57,8 @@
 
   {%- set identifier = model['name'] -%}
 
-  {%- set old_relation = adapter.get_relation(schema=schema, identifier=identifier) -%}
-  {%- set target_relation = api.Relation.create(identifier=identifier, schema=schema, type='table') -%}
+  {%- set old_relation = adapter.get_relation(database=database, schema=schema, identifier=identifier) -%}
+  {%- set target_relation = api.Relation.create(database=database, identifier=identifier, schema=schema, type='table') -%}
 
   {%- set non_destructive_mode = (flags.NON_DESTRUCTIVE == True) -%}
   {%- set full_refresh_mode = (flags.FULL_REFRESH == True) -%}
@@ -98,17 +98,16 @@
     {%- endcall %}
   {%- endif %}
 
-  {% set _ = dbt_utils.get_period_boundaries(schema,
-                                              identifier,
-                                              timestamp_field,
-                                              start_date,
-                                              stop_date,
-                                              period) %}
+  {% do dbt_utils.get_period_boundaries(target_relation,
+                                        timestamp_field,
+                                        start_date,
+                                        stop_date,
+                                        period) %}
   {%- set start_timestamp = load_result('period_boundaries')['data'][0][0] | string -%}
   {%- set stop_timestamp = load_result('period_boundaries')['data'][0][1] | string -%}
   {%- set num_periods = load_result('period_boundaries')['data'][0][2] | int -%}
 
-  {% set target_columns = adapter.get_columns_in_table(schema, identifier) %}
+  {% set target_columns = adapter.get_columns_in_relation(target_relation) %}
   {%- set target_cols_csv = target_columns | map(attribute='quoted') | join(', ') -%}
   {%- set loop_vars = {'sum_rows_inserted': 0} -%}
 
@@ -118,20 +117,23 @@
     {{log("         + " ~ modules.datetime.datetime.now().strftime('%H:%M:%S') ~ " " ~ msg, info=True)}}
 
     {%- set tmp_identifier = model['name'] ~ '__dbt_incremental_period' ~ i ~ '_tmp' -%}
+
     {%- set tmp_relation = api.Relation.create(identifier=tmp_identifier,
-                                             schema=schema, type='table') -%}
+                                               schema=schema,
+                                               database=database, type='table') -%}
     {% call statement() -%}
       {% set tmp_table_sql = dbt_utils.get_period_sql(target_cols_csv,
-                                                       sql,
-                                                       timestamp_field,
-                                                       period,
-                                                       start_timestamp,
-                                                       stop_timestamp,
-                                                       i) %}
+                                                      sql,
+                                                      timestamp_field,
+                                                      period,
+                                                      start_timestamp,
+                                                      stop_timestamp,
+                                                      i) %}
       {{dbt.create_table_as(True, tmp_relation, tmp_table_sql)}}
     {%- endcall %}
 
     {{adapter.expand_target_column_types(temp_table=tmp_identifier,
+                                         to_database=database,
                                          to_schema=schema,
                                          to_table=identifier)}}
     {%- set name = 'main-' ~ i -%}
@@ -140,7 +142,7 @@
       (
           select
               {{target_cols_csv}}
-          from {{tmp_relation.include(schema=False)}}
+          from {{tmp_relation.include(database=False, schema=False)}}
       );
     {%- endcall %}
     {%- set rows_inserted = (load_result('main-' ~ i)['status'].split(" "))[2] | int -%}
