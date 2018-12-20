@@ -132,10 +132,7 @@
       {{dbt.create_table_as(True, tmp_relation, tmp_table_sql)}}
     {%- endcall %}
 
-    {{adapter.expand_target_column_types(temp_table=tmp_identifier,
-                                         to_database=database,
-                                         to_schema=schema,
-                                         to_table=identifier)}}
+    {{adapter.expand_target_column_types(temp_table=tmp_identifier, to_relation=target_relation)}}
     {%- set name = 'main-' ~ i -%}
     {% call statement(name, fetch_result=True) -%}
       insert into {{target_relation}} ({{target_cols_csv}})
