@@ -1,4 +1,4 @@
-{% macro get_intervals_between(start_date, end_date, datepart) -%}
+{%- macro get_intervals_between(start_date, end_date, datepart) -%}
 
     {%- call statement('get_intervals_between', fetch_result=True) %}
 
@@ -20,7 +20,7 @@
 
 
 
-{% macro date_spine(datepart, start_date, end_date) %}
+{%- macro date_spine(datepart, start_date, end_date) -%}
 
 /*
 call as follows:
